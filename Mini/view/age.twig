@@ -1,0 +1,31 @@
+{% extends "showcase_base.twig" %}
+{% block content %}
+
+<div class="main">
+    <form id="age-form" class="pure-form pure-form-aligned" method="post" action="/age/cal">
+        <div class="pure-control-group">
+            <label for="day">Day</label>
+            <input id="day" type="text" name="day">
+        </div>
+
+        <div class="pure-control-group">
+            <label for="month">Month</label>
+            <input id="month" type="text" name="month">
+        </div>
+
+        <div class="pure-control-group">
+            <label for="year">Year</label>
+            <input id="year" type="text" name="year">
+        </div>
+
+        <div class="age-result"></div>
+        <div class="pure-controls">
+            <button id="age-cal" class="pure-button pure-button-primary">Caculate</button>
+        </div>
+    </form>
+</div>
+<script src="/js/jquery-2.1.1.min.js"></script>
+<!-- our JavaScript -->
+<script src="/js/application.js"></script>
+
+{% endblock %}

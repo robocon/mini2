@@ -1,0 +1,60 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    {% if id == 0 %}
+    <h1>Add</h1>
+    {% else %}
+    <h1>Edit</h1>
+    {% endif %}
+</div>
+<div class="content">
+    <form class="pure-form pure-form-stacked" id="form" method="post" action="/user/save">
+
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username" value="{{ user.username }}" required>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" value="{{ user.email }}" required>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" {% if id == 0 %} {{ 'required' }} {% else %} {{ '' }} {% endif %}>
+
+        <label for="confirm_password">Confirm Password</label>
+        <input id="confirm_password" type="password" name="confirm_password" {% if id == 0 %} {{ 'required' }} {% else %} {{ '' }} {% endif %}>
+
+        <button type="submit" class="pure-button pure-button-primary">Save</button>
+        <input type="hidden" name="id" value="{{ id }}">
+    </form>
+</div>
+<script charset="utf-8">
+    $(function(){
+        $("#form").validate({
+            rules:{
+                username: "required",
+                email: "required",
+                password: "required",
+                password: {
+                    minlength: 4,
+                },
+                confirm_password: "required",
+                confirm_password: {
+                    minlength: 4,
+                },
+                confirm_password: {
+                    equalTo: "#password"
+                },
+            },
+            messages: {
+                minlength: 'Your password must be at least 4 characters'
+            },
+            submitHandler: function(form) {
+                // $(form).submit();
+                console.log(form);
+                form.submit();
+            }
+        });
+    });
+</script>
+
+{% endblock %}

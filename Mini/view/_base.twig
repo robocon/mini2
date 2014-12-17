@@ -1,34 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
-    <title>MINI 2</title>
-    <!-- css -->
-    <link href="/css/style.css" rel="stylesheet">
-    <link href='//fonts.googleapis.com/css?family=Oswald:400,300,700' rel='stylesheet' type='text/css'>
+    <title>Diversition Homework{% if(title) %} - {{ title }} {% endif %}</title>
+    <link rel="stylesheet" href="/css/pure/pure-min.css">
+    <!--[if lte IE 8]>
+    <link rel="stylesheet" href="/css/layouts/side-menu-old-ie.css">
+    <![endif]-->
+    <!--[if gt IE 8]><!-->
+    <link rel="stylesheet" href="/css/layouts/side-menu.css">
+    <!--<![endif]-->
+    <link rel="stylesheet" href="/css/style.css">
     <!-- jQuery -->
-    <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
-    <!-- our JavaScript -->
-    <script src="/js/application.js"></script>
+    <script src="/js/jquery-2.1.1.min.js"></script>
+    <script src="/js/jquery.validate.min.js"></script>
 </head>
 <body>
-
-    <!-- logo -->
-    <div class="logo">
-        MINI<span class="number">2</span>
+    <div id="layout">
+        <!-- Menu toggle -->
+        <a href="#menu" id="menuLink" class="menu-link">
+            <!-- Hamburger icon -->
+            <span></span>
+        </a>
+        <div id="menu">
+            <div class="pure-menu pure-menu-open">
+                <a class="pure-menu-heading" href="#">HOMEWORK</a>
+                <ul>
+                    <li> <a href="/product">Products</a> </li>
+                    {% if user.id == false %}
+                    <li> <a href="/login">Login</a> </li>
+                    {% else %}
+                    <li> <a href="/user">Users</a> </li>
+                    <li> <a href="/user/logout">Logout</a> </li>
+                    {% endif %}
+                    <li class="menu-item-divided "> <a href="/showcase">Showcase</a></li>
+                    <li> <a href="/age">Calculate Age</a></li>
+                </ul>
+            </div>
+        </div>
+        <div id="main">
+            <!-- main content, will be injected via Twig -->
+            {% block content %} {% endblock %}
+        </div>
     </div>
-
-    <!-- navigation -->
-    <div class="navigation">
-        <a href="/">home</a>
-        <a href="/subpage">subpage</a>
-        <a href="/subpage/deeper">subpage/deeper</a>
-        <a href="/songs">songs</a>
-    </div>
-
-    <!-- main content, will be injected via Twig -->
-    {% block content %} {% endblock %}
-
+    <!-- php-mvc JavaScript -->
+    <script src="/js/ui.js"></script>
 </body>
 </html>

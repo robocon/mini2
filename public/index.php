@@ -5,12 +5,34 @@
 // Configuration for error reporting, useful to show every little problem during development
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
+session_start();
 
 // Load Composer's PSR-4 autoloader (necessary to load Slim, Mini etc.)
 require '../vendor/autoload.php';
 
 // Initialize Slim (the router/micro framework used)
 $app = new \Slim\Slim();
+
+/*****************  ******************/
+$app->add(new \Slim\Middleware\SessionCookie(array('secret' => 'ecZQ2uj14tGf6vKi8')));
+
+function authen(){
+    if (isset($_SESSION['user'])) {
+        return $_SESSION['user'];
+    }else{
+        header('Location: /login');
+        exit;
+    }
+}
+
+function validate(){
+    return isset($_SESSION['user']) ? $_SESSION['user'] : false ;
+}
+
+function getFlash($name){
+    return isset($_SESSION['slim.flash'][$name]) ? $_SESSION['slim.flash'][$name] : false ;
+}
+/*****************  ******************/
 
 // and define the engine used for the view @see http://twig.sensiolabs.org
 $app->view = new \Slim\Views\Twig();
@@ -43,9 +65,9 @@ $app->configureMode('development', function () use ($app) {
         'database' => array(
             'db_host' => 'localhost',
             'db_port' => '',
-            'db_name' => 'mini',
+            'db_name' => 'workone',
             'db_user' => 'root',
-            'db_pass' => 'your_password'
+            'db_pass' => '1234'
         )
     ));
 });
@@ -70,110 +92,307 @@ $app->configureMode('production', function () use ($app) {
 // Initialize the model, pass the database configs. $model can now perform all methods from Mini\model\model.php
 $model = new \Mini\Model\Model($app->config('database'));
 
+// !! Change "private $db" to "public $db"
+// $pmodel = new \Mini\Model\Product($app->config('database'));
+// var_dump($pmodel->get_products());
+
+$app->hook('slim.before.dispatch', function() use ($app) {
+    $user = null;
+    if (isset($_SESSION['user'])) {
+        $user = $_SESSION['user'];
+    }
+    $app->view()->setData('user', $user);
+});
+
 /************************************ THE ROUTES / CONTROLLERS *************************************************/
 
 // GET request on homepage, simply show the view template index.twig
-$app->get('/', function () use ($app) {
-    $app->render('index.twig');
+$app->get('/', function () use ($app, $model) {
+    $products = $model->get_products();
+    $user = validate();
+    $app->render('product/index.twig', array(
+        'products' => $products,
+        'title' => 'Home',
+        'user' => $user,
+        'error' => getFlash('error'),
+    ));
 });
 
-// GET request on /subpage, simply show the view template subpage.twig
-$app->get('/subpage', function () use ($app) {
-    $app->render('subpage.twig');
+/**********************************************************/
+/************************* LOGIN **************************/
+/**********************************************************/
+$app->get('/login', function () use ($app) {
+    if (validate()===false) {
+        $app->render('login_form.twig', array(
+            'error' => getFlash('error'),
+        ));
+    }else{
+        $app->redirect('/user');
+    }
 });
 
-// GET request on /subpage/deeper (to demonstrate nested levels), simply show the view template subpage.deeper.twig
-$app->get('/subpage/deeper', function () use ($app) {
-    $app->render('subpage.deeper.twig');
-});
+/**********************************************************/
+/************************ PRODUCT *************************/
+/**********************************************************/
+$app->group('/product', function () use ($app, $model) {
 
-// All requests on /songs and behind (/songs/search etc) are grouped here. Note that $model is passed (as some routes
-// in /songs... use the model)
-$app->group('/songs', function () use ($app, $model) {
-
-    // GET request on /songs. Perform actions getAmountOfSongs() and getAllSongs() and pass the result to the view.
-    // Note that $model is passed to the route via "use ($app, $model)". I've written it like that to prevent creating
-    // the model / database connection in routes that does not need the model / db connection.
     $app->get('/', function () use ($app, $model) {
-
-        $amount_of_songs = $model->getAmountOfSongs();
-        $songs = $model->getAllSongs();
-
-        $app->render('songs.twig', array(
-            'amount_of_songs' => $amount_of_songs,
-            'songs' => $songs
+        $products = $model->get_products();
+        $user = validate();
+        $app->render('product/index.twig', array(
+            'products' => $products,
+            'title' => 'Product',
+            'user' => $user,
+            'error' => getFlash('error'),
         ));
     });
 
-    // POST request on /songs/addsong (after a form submission from /songs). Asks for POST data, performs
-    // model-action and passes POST data to it. Redirects the user afterwards to /songs.
-    $app->post('/addsong', function () use ($app, $model) {
-
-        // in a real-world app it would be useful to validate the values (inside the model)
-        $model->addSong(
-            $_POST["artist"], $_POST["track"], $_POST["link"], $_POST["year"], $_POST["country"], $_POST["genre"]);
-        $app->redirect('/songs');
+    $app->get('/form', 'authen', function () use ($app) {
+        $app->render('product/form.twig', array(
+            'id' => 0,
+        ));
     });
 
-    // GET request on /songs/deletesong/:song_id, where :song_id is a mandatory song id.
-    // Performs an action on the model and redirects the user to /songs.
-    $app->get('/deletesong/:song_id', function ($song_id) use ($app, $model) {
-
-        $model->deleteSong($song_id);
-        $app->redirect('/songs');
+    $app->get('/form/:id', function ($id = 0) use ($app, $model) {
+        if ($id == 0) {
+            $app->redirect('/product');
+        }
+        $item = $model->get_products($id);
+        $app->render('product/form.twig', array(
+            'id' => $id,
+            'item' => $item,
+        ));
     });
 
-    // GET request on /songs/editsong/:song_id. Should be self-explaining. If song id exists show the editing page,
-    // if not redirect the user. Note the short syntax: 'song' => $model->getSong($song_id)
-    $app->get('/editsong/:song_id', function ($song_id) use ($app, $model) {
+    $app->get('/detail/:id', function ($id = 0) use ($app, $model) {
+        if ($id == 0) {
+            $app->redirect('/product');
+        }
+        $user = validate();
+        $item = $model->get_products($id);
+        $comments = $model->get_comments($id);
+        $app->render('product/detail.twig', array(
+            'id' => $id,
+            'item' => $item,
+            'user' => $user,
+            'comments' => $comments,
+        ));
+    });
 
-        $song = $model->getSong($song_id);
+    $app->post('/save', 'authen', function () use ($app, $model) {
+        $user = validate();
+        $data = array(
+            'title' => $_POST['title'],
+            'details' => $_POST['detail'],
+            'user_id' => $user->id,
+            'id' => $_POST['id'],
+        );
 
-        if (!$song) {
-            $app->redirect('/songs');
+        if ($_FILES['file']['error'] === 0) {
+            $base_dir = dirname(__FILE__);
+            if ($data['id'] != 0) {
+                $file = $model->get_products($data['id']);
+                $img_path = $base_dir.'/img/product/'.$file->preview;
+                if (is_file($img_path)) {
+                    unlink($img_path);
+                }
+            }
+
+            $info = getimagesize($_FILES['file']['tmp_name']);
+            if (preg_match('/.*\/(png|jpeg|jpg)/', $info['mime'])) {
+                $file_name = uniqid().strrchr($_FILES['file']['name'], ".");
+                $data['file_name'] = $file_name;
+                move_uploaded_file($_FILES['file']['tmp_name'], $base_dir.'/img/product/'.$file_name);
+            }
         }
 
-        $app->render('songs.edit.twig', array('song' => $song));
+        if ($data['id'] == 0) {
+            $model->product_save($data);
+        }else{
+
+            $model->product_save($data);
+        }
+        $app->redirect('/product');
     });
 
-    // POST request on /songs/updatesong. Self-explaining.
-    $app->post('/updatesong', function () use ($app, $model) {
+    $app->get('/delete/:id', function ($id = 0) use ($app, $model) {
+        if ($id == 0) {
+            $app->redirect('/product');
+        }
 
-        // passing an array would be better here, but for simplicity this way it okay
-        $model->updateSong($_POST['song_id'], $_POST["artist"], $_POST["track"], $_POST["link"], $_POST["year"],
-            $_POST["country"], $_POST["genre"]);
+        $user = validate();
+        if ($user->level == 1) {
+            $app->flash('error', 'Invalid access level');
+            $app->redirect('/');
+        }
 
-        $app->redirect('/songs');
+        $base_dir = dirname(__FILE__);
+        $file = $model->get_products($id);
+        $img_path = $base_dir.'/img/product/'.$file->preview;
+        if (is_file($img_path)) {
+            unlink($img_path);
+        }
+
+        $model->product_delete($id);
+        $app->redirect('/product');
     });
+});
 
-    // GET request on /songs/ajaxGetStats. In this demo application this route is used to request data via
-    // JavaScript (AJAX). Note that this does not render a view, it simply echoes out JSON.
-    $app->get('/ajaxGetStats', function () use ($app, $model) {
+/**********************************************************/
+/************************** USER **************************/
+/**********************************************************/
+$app->group('/user', function () use ($app, $model) {
 
-        $amount_of_songs = $model->getAmountOfSongs();
-        $app->contentType('application/json;charset=utf-8');
-        echo json_encode($amount_of_songs);
-    });
-
-    // POST request on /search. Self-explaining.
-    $app->post('/search', function () use ($app, $model) {
-
-        $result_songs = $model->searchSong($_POST['search_term']);
-
-        $app->render('songs.search.twig', array(
-            'amount_of_results' => count($result_songs),
-            'songs' => $result_songs
+    $app->get('/', 'authen', function () use ($app, $model) {
+        $user = validate();
+        if ($user->level == 1) {
+            $app->flash('error', 'Invalid access level');
+            $app->redirect('/');
+        }
+        $users = $model->get_users();
+        $app->render('user/index.twig', array(
+            'users' => $users,
+            'error' => getFlash('error'),
         ));
     });
 
-    // GET request on /search. Simply redirects the user to /songs
-    $app->get('/search', function () use ($app) {
-        $app->redirect('/songs');
+    $app->get('/form', 'authen', function () use ($app) {
+        $app->render('user/form.twig', array(
+            'id' => 0,
+            'user' => array(),
+        ));
     });
 
+    $app->get('/form/:id', 'authen', function ($id = 0) use ($app, $model) {
+        if ($id === 0) {
+            $app->redirect('/user');
+        }
+
+        $user = $model->get_users($id);
+        $app->render('user/form.twig', array(
+            'id' => $id,
+            'user' => $user
+        ));
+    });
+
+    $app->post('/save', 'authen', function () use ($app, $model) {
+
+        $user = validate();
+        if ($user->level == 1) {
+            $app->flash('error', 'Invalid access level');
+            $app->redirect('/');
+        }
+
+        $find_user = $model->find_by_username($_POST);
+        if ($find_user !== false) {
+            $app->flash('error', 'Username has been used');
+            $app->redirect('/user');
+        }
+
+        $model->user_save($_POST);
+        $app->redirect('/user');
+    });
+
+    $app->get('/delete/:id', 'authen', function ($id = 0) use ($app, $model) {
+        if ($id === 0) {
+            $app->flash('error', 'Invalid id');
+            $app->redirect('/');
+        }
+        $user = validate();
+        if ($user->level == 1) {
+            $app->flash('error', 'Invalid access level');
+            $app->redirect('/');
+        }
+        $model->user_delete($id);
+        $app->redirect('/user');
+    });
+
+    $app->post('/login', function () use ($app, $model) {
+        $login = $model->login_user($_POST);
+        if ($login === false) {
+            $app->flash('error', 'can not found this user :(');
+            $app->redirect('/login');
+        }else{
+            $_SESSION['user'] = $login;
+            $app->redirect('/');
+        }
+    });
+
+    $app->get('/logout', function () use ($app) {
+        unset($_SESSION['user']);
+        $app->view()->setData('user', null);
+        $app->redirect('/');
+    });
 });
 
+/**********************************************************/
+/********************* COMMENT ****************************/
+/**********************************************************/
+$app->group('/comment', function () use ($app, $model) {
+    $app->post('/save', 'authen', function () use ($app, $model) {
+
+        $user = validate();
+        $_POST['user_id'] = $user->id;
+        $model->comment_save($_POST);
+        $app->redirect('/product/detail/'.$_POST['product_id']);
+    });
+
+    $app->get('/delete/:product_id/:id', 'authen', function ($product_id = 0, $id = 0) use ($app, $model) {
+        if ($id == 0 || $product_id == 0) {
+            $app->redirect('/');
+        }
+        $model->comment_delete($id);
+        $app->redirect('/product/detail/'.$product_id);
+    });
+});
+
+/**********************************************************/
+/***************** SHOW CSS AND HTML **********************/
+/**********************************************************/
+$app->get('/showcase', function () use ($app) {
+    $app->render('showcase.twig');
+});
+
+/**********************************************************/
+/***************** CALCULATE AGE TO WEEK ******************/
+/**********************************************************/
+$app->get('/age', function () use ($app) {
+    $app->render('age.twig');
+});
+$app->post('/age/cal', function () use ($app) {
+
+    if (empty($_POST['year']) OR empty($_POST['month'] OR empty($_POST['day']))) {
+        $app->contentType('application/json;charset=utf-8');
+        echo json_encode(array('msg' => 'Please fill all input :)'));
+        exit;
+    }
+
+    $date = new DateTime(date('Y-m-d'), new DateTimeZone('Asia/Bangkok'));
+    $date1 = date_create($date->format('Y-m-d'));
+
+    $position1 = $date1->format('w');
+
+    $birth_date = new DateTime($_POST['year'].'-'.$_POST['month'].'-'.$_POST['day'], new DateTimeZone('Asia/Bangkok'));
+    $date2 = date_create($birth_date->format('Y-m-d'));
+    $date_txt = $birth_date->format('l');
+
+    $position2 = $birth_date->format('w');
+
+    $diff = date_diff($date1, $date2);
+    $week_rows = round($diff->days / 7);
+
+    if ($position1 > $position2) {
+        $day_rows = $position1 - $position2;
+    }else if($position1 < $position2){
+        $day_rows = 7 - ($position2 - $position1);
+    }else{
+        $day_rows = 0;
+    }
+
+    $msg = 'You born on '.$date_txt.', now '.$week_rows.' weeks and '.$day_rows.' days passed';
+    $app->contentType('application/json;charset=utf-8');
+    echo json_encode(array('msg' => $msg));
+});
 /******************************************* RUN THE APP *******************************************************/
 
 $app->run();
-

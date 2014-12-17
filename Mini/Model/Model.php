@@ -27,127 +27,199 @@ class Model
 
         // create new PDO db connection
         $this->db = new PDO($dsn, $config['db_user'], $config['db_pass'], $options);
+		$this->db->query('SET CHARACTER SET utf8');
 	}
 
-    public function getAmountOfSongs()
-    {
-        $sql = "SELECT COUNT(id) AS amount_of_songs FROM song";
-        $query = $this->db->prepare($sql);
-        $query->execute();
-
-        return $query->fetch()->amount_of_songs;
-    }
-
-    /**
-     * Get all songs from database
-     */
-    public function getAllSongs()
-    {
-        $sql = "SELECT id, artist, track, link, year, country, genre FROM song";
-        $query = $this->db->prepare($sql);
-        $query->execute();
-        // fetchAll() is the PDO method that gets all result rows, here in object-style because we defined this in
-        // core/controller.php! If you prefer to get an associative array as the result, then do
-        // $query->fetchAll(PDO::FETCH_ASSOC); or change core/controller.php's PDO options to
-        // $options = array(PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC ...
-        return $query->fetchAll();
-    }
-
-    /**
-     * Add a song to database
-     * Please note that it's not necessary to "clean" our input in any way. With PDO all input is escaped properly
-     * automatically. We also don't use strip_tags() etc. here so we keep the input 100% original (so it's possible
-     * to save HTML and JS to the database, which is a valid use case). Data will only be cleaned when putting it out
-     * in the views (see the views for more info).
-     * @param string $artist Artist
-     * @param string $track Track
-     * @param string $link Link
-     * @param string $year Year
-     * @param string $country Country
-     * @param string $genre Genre
-     */
-    public function addSong($artist, $track, $link, $year, $country, $genre)
-    {
-        $sql = "INSERT INTO song (artist, track, link, year, country, genre) VALUES (:artist, :track, :link, :year, :country, :genre)";
-        $query = $this->db->prepare($sql);
-        $parameters = array(':artist' => $artist, ':track' => $track, ':link' => $link, ':year' => $year, ':country' => $country, ':genre' => $genre);
-        // useful for debugging: you can see the SQL behind above construction by using:
-        // echo '[ PDO DEBUG ]: ' . \PdoDebugger::show($sql, $parameters); exit();
-        $query->execute($parameters);
-    }
-
-    /**
-     * Delete a song in the database
-     * Please note: this is just an example! In a real application you would not simply let everybody
-     * add/update/delete stuff!
-     * @param int $song_id Id of song
-     */
-    public function deleteSong($song_id)
-    {
-        $sql = "DELETE FROM song WHERE id = :song_id";
-        $query = $this->db->prepare($sql);
-        $parameters = array(':song_id' => $song_id);
-        // useful for debugging: you can see the SQL behind above construction by using:
-        // echo '[ PDO DEBUG ]: ' . \PdoDebugger::show($sql, $parameters); exit();
-        $query->execute($parameters);
-    }
-
-    /**
-     * Get a song from database
-     * @param int $song_id Id of song
-     * @return mixed
-     */
-    public function getSong($song_id)
-    {
-        $sql = "SELECT id, artist, track, link, year, country, genre FROM song WHERE id = :song_id LIMIT 1";
-        $query = $this->db->prepare($sql);
-        $parameters = array(':song_id' => $song_id);
-        // useful for debugging: you can see the SQL behind above construction by using:
-        // echo '[ PDO DEBUG ]: ' . \PdoDebugger::show($sql, $parameters); exit();
-        $query->execute($parameters);
-        // fetch() is the PDO method that get exactly one result
+	/**
+	 * LOGIN
+	 */
+	public function login_user($post)
+	{
+		$sql = "SELECT `id`,`username`,`email`,`level` FROM `users` WHERE `username` = :username AND `password` = :password";
+		$query = $this->db->prepare($sql);
+        $query->execute(array(':username' => $post['username'], ':password' => hash('sha256', $post['password'])));
         return $query->fetch();
-    }
+	}
+	/**
+	 * PRODUCTS
+	 */
+	public function get_products($id = 0)
+	{
+		$where = "";
+		if ($id !== 0) {
+			$where = " WHERE a.`id` = :id";
+		}
 
-    /**
-     * Update a song in database
-     * Please note that it's not necessary to "clean" our input in any way. With PDO all input is escaped properly
-     * automatically. We also don't use strip_tags() etc. here so we keep the input 100% original (so it's possible
-     * to save HTML and JS to the database, which is a valid use case). Data will only be cleaned when putting it out
-     * in the views (see the views for more info).
-     * @param int $song_id Id
-     * @param string $artist Artist
-     * @param string $track Track
-     * @param string $link Link
-     * @param string $year Year
-     * @param string $country Country
-     * @param string $genre Genre
-     */
-    public function updateSong($song_id, $artist, $track, $link, $year, $country, $genre)
-    {
-        $sql = "UPDATE song SET artist = :artist, track = :track, link = :link, year = :year, country = :country, genre = :genre WHERE id = :song_id";
+		$prefix = " AND";
+		if (empty($where)) {
+			$prefix = " WHERE ";
+		}
+		$sql = "SELECT a.*, b.`username` FROM `products` AS a, `users` AS b ".$where.$prefix." a.`user_id` = b.`id` ORDER BY a.`id` DESC";
+		$query = $this->db->prepare($sql);
+
+		if ($id !== 0) {
+	        $parameters = array(
+				':id' => $id
+			);
+	        $query->execute($parameters);
+	        return $query->fetch();
+		}else{
+	        $query->execute();
+	        return $query->fetchAll();
+		}
+	}
+
+	public function product_save($post)
+	{
+		if ($post['id'] == 0) {
+	        $sql = "INSERT INTO products (title, details, preview, user_id, post_on) VALUES (:title, :details, :preview, :user_id, NOW())";
+	        $parameters = array(
+				':title' => $post['title'],
+				':details' => $post['details'],
+				':preview' => $post['file_name'],
+				':user_id' => $post['user_id'],
+			);
+		}else{
+			if (!empty($post['file_name'])) {
+		        $sql = "UPDATE products SET title = :title, details = :details, preview = :preview WHERE id = :id";
+		        $parameters = array(
+					':title' => $post['title'],
+					':details' => $post['details'],
+					':preview' => $post['file_name'],
+					':id' => $post['id'],
+				);
+			}else{
+		        $sql = "UPDATE products SET title = :title, details = :details WHERE id = :id";
+		        $parameters = array(
+					':title' => $post['title'],
+					':details' => $post['details'],
+					':id' => $post['id'],
+				);
+			}
+		}
         $query = $this->db->prepare($sql);
-        $parameters = array(':artist' => $artist, ':track' => $track, ':link' => $link, ':year' => $year, ':country' => $country, ':genre' => $genre, ':song_id' => $song_id);
-        // useful for debugging: you can see the SQL behind above construction by using:
-        // echo '[ PDO DEBUG ]: ' . \PdoDebugger::show($sql, $parameters); exit();
         $query->execute($parameters);
-    }
+	}
 
-    /**
-     * Search
-     * A super-simple search via LIKE. In a real world scenario you would use MATCH AGAINST and column indexes.
-     * @param $search_term
-     * @return array
-     */
-    public function searchSong($search_term)
-    {
-        $sql = "SELECT id, artist, track, link, year, country, genre FROM song WHERE (artist LIKE :search_term) OR (track LIKE :search_term);";
-        $query = $this->db->prepare($sql);
-        $parameters = array(':search_term' => '%' . $search_term . '%');
-        // useful for debugging: you can see the SQL behind above construction by using:
-        // echo '[ PDO DEBUG ]: ' . \PdoDebugger::show($sql, $parameters); exit();
-        $query->execute($parameters);
+	public function product_delete($id)
+	{
+        $query = $this->db->prepare("DELETE FROM products WHERE id = :id");
+        $query->execute(array(':id' => $id));
 
+        $query = $this->db->prepare("DELETE FROM comments WHERE product_id = :id");
+        $query->execute(array(':id' => $id));
+	}
+
+	/**
+	 * USERS
+	 */
+	public function get_users($id = 0)
+	{
+		$where = "";
+		if ($id !== 0) {
+			$where = " AND `id` = :id";
+		}
+		$sql = "SELECT * FROM `users` WHERE `level` != '99'".$where." ORDER BY `id` DESC";
+		$query = $this->db->prepare($sql);
+
+		if ($id !== 0) {
+	        $parameters = array(
+				':id' => $id
+			);
+	        $query->execute($parameters);
+	        return $query->fetch();
+		}else{
+	        $query->execute();
+	        return $query->fetchAll();
+		}
+	}
+
+	public function find_by_username($post)
+	{
+		$sql = "SELECT * FROM `users` WHERE `username` = :username AND `id` != :id";
+		$query = $this->db->prepare($sql);
+        $query->execute(array(
+			':username' => $post['username'],
+			':id' => $post['id'],
+		));
+        return $query->fetch();
+	}
+
+	public function user_save($post)
+	{
+		if (!empty($post['password'])) {
+			$post['password'] = hash('sha256', $post['password']);
+		}
+
+		if ($post['id'] == 0) {
+
+	        $sql = "INSERT INTO users (username, password, email, level) VALUES (:username, :password, :email, 1)";
+	        $parameters = array(
+				':username' => $post['username'],
+				':password' => $post['password'],
+				':email' => $post['email'],
+			);
+	        $query = $this->db->prepare($sql);
+	        $query->execute($parameters);
+		}else{
+
+			if (!empty($post['password'])) {
+
+		        $sql = "UPDATE users SET username = :username, password = :password, email = :email WHERE id = :id";
+				$parameters = array(
+					':username' => $post['username'],
+					':password' => $post['password'],
+					':email' => $post['email'],
+					':id' => $post['id'],
+				);
+			}else{
+		        $sql = "UPDATE users SET username = :username, email = :email WHERE id = :id";
+				$parameters = array(
+					':username' => $post['username'],
+					':email' => $post['email'],
+					':id' => $post['id'],
+				);
+			}
+
+	        $query = $this->db->prepare($sql);
+	        $query->execute($parameters);
+		}
+	}
+
+	public function user_delete($id)
+	{
+        $query = $this->db->prepare("DELETE FROM users WHERE id = :id");
+        $query->execute(array(':id' => $id));
+
+        $query = $this->db->prepare("DELETE FROM products WHERE user_id = :id");
+        $query->execute(array(':id' => $id));
+
+        $query = $this->db->prepare("DELETE FROM comments WHERE user_id = :id");
+        $query->execute(array(':id' => $id));
+	}
+
+	public function get_comments($id)
+	{
+		$sql = "SELECT a.*, b.username FROM `comments` AS a, `users` AS b WHERE a.`product_id` = :id AND a.`user_id` = b.`id` ORDER BY a.`id` DESC";
+		$query = $this->db->prepare($sql);
+        $query->execute(array(':id' => $id));
         return $query->fetchAll();
-    }
+	}
+	public function comment_save($post)
+	{
+        $sql = "INSERT INTO comments (detail, product_id, user_id, post_on) VALUES (:detail, :product_id, :user_id, NOW())";
+        $parameters = array(
+			':detail' => $post['detail'],
+			':product_id' => $post['product_id'],
+			':user_id' => $post['user_id'],
+		);
+        $query = $this->db->prepare($sql);
+        $query->execute($parameters);
+	}
+
+	public function comment_delete($id)
+	{
+        $query = $this->db->prepare("DELETE FROM comments WHERE id = :id");
+        $query->execute(array(':id' => $id));
+	}
 }

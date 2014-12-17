@@ -1,0 +1,44 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    <h1>{{ item.title }}</h1>
+</div>
+<div class="content">
+    <img src="/img/product/{{ item.preview }}" class="thumbnail" />
+    <p class="content-detail">
+        {{ item.details }}
+    </p>
+    <div class="comments-list">
+        <div class="comment-list-title"> Comments </div>
+        <ul>
+            {% for comment in comments %}
+            <li>
+                <div class="comment-detail">
+                    By <span>{{ comment.username }}</span> on <span>{{ comment.post_on }}</span>
+                    {% if user.level > 1 %}
+                    <div class="comment-detail-action">
+                        <a href="/comment/delete/{{ item.id }}/{{ comment.id }}">Delete</a>
+                    </div>
+                    {% endif %}
+                </div>
+                <p class="comment-content">
+                    {{ comment.detail }}
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% if user != false %}
+    <div class="comment-box">
+        <div class="comment-box-title"> Post new comment </div>
+        <form id="form" class="pure-form pure-form-stacked" action="/comment/save" method="post">
+            <textarea id="detail" class="pure-u-1" name="detail" rows="8" required></textarea>
+            <button type="submit" class="pure-button pure-button-primary">Save</button>
+            <input type="hidden" name="product_id" value="{{ item.id }}">
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

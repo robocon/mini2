@@ -1,0 +1,48 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    <h1>{% if id==0 %} Add {% else %} Edit {% endif %}</h1>
+</div>
+<div class="content">
+    <form id="form" class="pure-form pure-form-stacked" method="post" action="/product/save" enctype="multipart/form-data">
+
+        <label for="title">Title</label>
+        <input id="title" type="text" name="title" value="{{ item.title }}" required>
+
+        <label for="detail">Detail</label>
+        <textarea id="detail" class="pure-u-1" name="detail" rows="8" required>{{ item.details }}</textarea>
+
+        <label for="email">Thumbnail</label>
+        {% if item.preview %}
+            <img src="/img/product/{{ item.preview }}" style="max-height: 120px; display: block;"/>
+        {% endif %}
+        <input id="file" type="file" name="file" {% if id == 0 %} required {% else %} {{ '' }} {% endif %}>
+
+        <label for=""></label>
+        <button type="submit" class="pure-button pure-button-primary">Save</button>
+        <input type="hidden" name="id" value="{{ id }}">
+    </form>
+</div>
+<script charset="utf-8">
+    $(function(){
+        $("#form").validate({
+            rules:{
+                title: "required",
+                detail: "required",
+                title: {
+                    minlength: 4,
+                },
+            },
+            messages: {
+                minlength: 'Your title must be at least 4 characters'
+            },
+            submitHandler: function(form) {
+                console.log(form);
+                form.submit();
+            }
+        });
+    });
+</script>
+
+{% endblock %}

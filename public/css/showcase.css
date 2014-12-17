@@ -1,0 +1,29 @@
+body,
+p{
+    margin: 0;
+    padding: 0;
+}
+.main{
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+.header{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 5px solid #bbbbbb;
+    border-radius: 1.2em;
+    padding: 2em 4em;
+    display: inline-block;
+}
+.header p{
+    text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+    color: #FF9B00;
+}
+.signature{
+    position: absolute;
+    bottom: 1em;
+    right: 1em;
+}

@@ -1,0 +1,23 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    <h1>Login</h1>
+</div>
+<div class="content">
+    <form id="login_form" class="pure-form pure-form-stacked login_form" action="/user/login" method="post">
+
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username">
+
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password">
+
+        {% if(error) %}
+        <label class="error">{{ error }}</label>
+        {% endif %}
+        <button type="submit" class="pure-button pure-button-primary">Login</button>
+    </form>
+</div>
+
+{% endblock %}

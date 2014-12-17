@@ -9,3 +9,67 @@ RewriteEngine On
 # TODO: prevent access to /scss
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]
+
+# !!! READ MORE !!!
+# http://www.limecanvas.com/speed-up-your-website-using-caching-and-htaccess/
+<ifModule mod_expires.c>
+ExpiresActive On
+ExpiresDefault A300
+
+# Expires after 1 month
+ExpiresByType image/gif A2592000
+ExpiresByType image/png A2592000
+ExpiresByType image/jpg A2592000
+ExpiresByType image/x-icon A2592000
+ExpiresByType application/pdf A2592000
+ExpiresByType application/x-javascript A2592000
+ExpiresByType text/plain A2592000
+
+# Expires after 1 day
+ExpiresByType text/css A86400
+</ifModule>
+<ifModule mod_headers.c>
+Header set Connection keep-alive
+
+#
+# KeepAlive: Whether or not to allow persistent connections (more than
+# one request per connection). Set to "Off" to deactivate.
+#
+KeepAlive On
+
+#
+# MaxKeepAliveRequests: The maximum number of requests to allow
+# during a persistent connection. Set to 0 to allow an unlimited amount.
+# We recommend you leave this number high, for maximum performance.
+#
+MaxKeepAliveRequests 100
+
+#
+# KeepAliveTimeout: Number of seconds to wait for the next request from the
+# same client on the same connection.
+#
+KeepAliveTimeout 100
+
+# Turn on Expires and set default expires to 3 days
+ExpiresActive On
+ExpiresDefault A259200
+
+# Set up caching on media files for 1 month
+<filesMatch ".(ico|gif|jpg|jpeg|png|flv|pdf|swf|mov|mp3|wmv|ppt)$">
+ExpiresDefault A2419200
+Header append Cache-Control "public"
+</filesMatch>
+
+# Set up 2 Hour caching on commonly updated files
+<filesMatch ".(xml|txt|html|js|css)$">
+ExpiresDefault A7200
+Header append Cache-Control "private, must-revalidate"
+</filesMatch>
+
+# Force no caching for dynamic files
+<filesMatch ".(php|cgi|pl|htm)$">
+ExpiresDefault A0
+Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+Header set Pragma "no-cache"
+</filesMatch>
+</ifModule>

@@ -1,0 +1,29 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    <h1>Users</h1>
+</div>
+<div class="submenu">
+    <a href="/user/form">Add</a>
+</div>
+{% if error %}
+<div class="warning"> {{ error }} </div>
+{% endif %}
+<div class="content">
+    <ul class="list">
+        {% for user in users %}
+        <li>
+            <h3>{{ user.username }}</h3>
+            <p>
+                {{ user.email }}
+            </p>
+            <div class="actions">
+                <a href="/user/form/{{ user.id }}">Edit</a> | <a href="user/delete/{{ user.id }}">Delete</a>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}

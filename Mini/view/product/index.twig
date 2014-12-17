@@ -1,0 +1,33 @@
+{% extends "_base.twig" %}
+{% block content %}
+
+<div class="header">
+    <h1>Products</h1>
+</div>
+{% if user != false %}
+<div class="submenu">
+    <a href="/product/form">Add</a>
+</div>
+{% endif %}
+{% if error %}
+<div class="warning"> {{ error }} </div>
+{% endif %}
+<div class="content">
+    <ul class="list">
+        {% for item in products %}
+        <li>
+            <h3><a href="product/detail/{{ item.id }}">{{ item.title }}</a></h3>
+            <p>
+                By {{ item.username }} on {{ item.post_on }}
+            </p>
+            {% if user.level > 1 %}
+            <div class="actions">
+                <a href="/product/form/{{ item.id }}">Edit</a> | <a href="product/delete/{{ item.id }}">Delete</a>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}
